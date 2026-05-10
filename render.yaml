@@ -1,0 +1,51 @@
+# render.yaml — Pro Stock Suite deployment blueprint
+# ─────────────────────────────────────────────────────────────────
+# HOW TO USE
+#   1. Push your repo to GitHub / GitLab
+#   2. In Render → New → Blueprint → connect your repo → select this file
+#   3. Deploy BACKEND first. Copy its public URL (e.g. https://stock-backend.onrender.com)
+#   4. Set that URL as BACKEND_URL env var on the FRONTEND service (Render dashboard)
+# ─────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── BACKEND (FastAPI) ──────────────────────────────────────────
+  - type: web
+    name: stock-backend
+    runtime: python
+    plan: free                          # upgrade to "starter" for 512 MB→ 1 GB RAM
+    region: oregon
+
+    buildCommand: pip install -r requirements_backend.txt
+    startCommand: uvicorn backend_fastapi_4:app --host 0.0.0.0 --port $PORT
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: TF_CPP_MIN_LOG_LEVEL
+        value: "3"
+
+    # Free tier spins down after 15 min of inactivity.
+    # First request after sleep takes ~30 s to wake up — this is normal.
+
+  # ── FRONTEND (Streamlit) ───────────────────────────────────────
+  - type: web
+    name: stock-frontend
+    runtime: python
+    plan: free
+    region: oregon
+
+    buildCommand: pip install -r requirements_frontend.txt
+    startCommand: >
+      streamlit run front_streamlit_render.py
+      --server.port $PORT
+      --server.address 0.0.0.0
+      --server.headless true
+      --server.enableCORS false
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: BACKEND_URL
+        # ⚠️  REPLACE THIS with your real backend URL after deploying the backend
+        value: "https://stock-backend.onrender.com"
